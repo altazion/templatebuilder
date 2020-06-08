@@ -1,0 +1,6 @@
+# action.yml
+name: 'Validate Template'
+description: 'Outils de compilation pour réaliser des templates pour Altazion Commerce et Signage'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
