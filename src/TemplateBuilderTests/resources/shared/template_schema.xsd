@@ -1,0 +1,322 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="template"
+    targetNamespace="https://schemas.altazion.com/sys/template.xsd"
+    elementFormDefault="qualified"
+    xmlns="https://schemas.altazion.com/sys/template.xsd"
+    xmlns:mstns="https://schemas.altazion.com/sys/template.xsd"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+>
+  <xs:element name="Template">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element type="xs:string" name="Name" minOccurs="1" maxOccurs="1" />
+        <xs:element type="xs:string" name="Description" minOccurs="1" maxOccurs="1" />
+        <xs:element type="xs:string" name="Author" minOccurs="0" maxOccurs="1" />
+        <xs:element type="xs:string" name="Thumbnail" minOccurs="0" maxOccurs="5" />
+
+        <xs:element name="BasedOn">
+          <xs:simpleType>
+              <xs:restriction base="xs:string">
+                <xs:enumeration value="ECommerce" />
+                <xs:enumeration value="Vending" />
+              </xs:restriction>
+          </xs:simpleType>
+        </xs:element>
+        
+        <xs:element name="DependsOn" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:simpleContent>
+              <xs:extension base="xs:string">
+                <xs:attribute use="required" name="type">
+                  <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                      <xs:enumeration value="Hardware" />
+                      <xs:enumeration value="Module" />
+                      <xs:enumeration value="OrderingProcess" />
+                    </xs:restriction>
+                  </xs:simpleType>
+                </xs:attribute>
+                <xs:attribute use="required" name="required">
+                  <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                      <xs:enumeration value="Required" />
+                      <xs:enumeration value="Critical" />
+                      <xs:enumeration value="Optional" />
+                    </xs:restriction>
+                  </xs:simpleType>
+                </xs:attribute>
+              </xs:extension>
+            </xs:simpleContent>
+
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Import" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:simpleContent>
+              <xs:extension base="xs:string">
+                <xs:attribute use="required" name="type">
+                  <xs:simpleType>
+                    <xs:restriction base="xs:string">
+                      <xs:enumeration value="Component" />
+                      <xs:enumeration value="ComponentContract" />
+                      <xs:enumeration value="GoogleFont" />
+                    </xs:restriction>
+                  </xs:simpleType>
+                </xs:attribute>
+              </xs:extension>
+            </xs:simpleContent>
+
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element minOccurs="1" maxOccurs="1" name="Content">
+          <xs:complexType>
+
+            <xs:sequence>
+              <xs:element name="Variation" minOccurs="0" maxOccurs="unbounded">
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="VariationContent" minOccurs="0" maxOccurs="unbounded">
+                      <xs:complexType>
+                        <xs:choice>
+                          <xs:element name="Folder" minOccurs="1" maxOccurs="1">
+                            <xs:complexType>
+                              <xs:attribute name="path" use="required" type="xs:string" />
+                            </xs:complexType>
+                          </xs:element>
+                          <xs:sequence>
+                            <xs:element name="File" minOccurs="1" maxOccurs="unbounded">
+                              <xs:complexType>
+                                <xs:attribute name="path" use="required" type="xs:string" />
+                              </xs:complexType>
+                            </xs:element>
+                          </xs:sequence>
+                        </xs:choice>
+                          <xs:attribute name="kind" use="required">
+                            <xs:simpleType>
+                              <xs:restriction base="xs:string">
+                                <xs:enumeration value="ProductPage" />
+                                <xs:enumeration value="HomePage" />
+                                <xs:enumeration value="SearchPage" />
+                                <xs:enumeration value="SearchPopup" />
+                              </xs:restriction>
+                            </xs:simpleType>
+                          </xs:attribute>
+
+                        </xs:complexType>
+                    </xs:element>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Settings" type="SettingsType">
+                      <xs:annotation>
+                        <xs:appinfo>Altazion Note</xs:appinfo>
+                        <xs:documentation>Can only be used on Interactive Signage templates.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:sequence>
+                  <xs:attribute name="code" use="required" type="xs:string" />
+                  <xs:attribute name="label" use="required" type="xs:string" />
+                  <xs:attribute name="description" use="optional" type="xs:string" />
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+            
+            <xs:attribute type="xs:string" name="root" use="required" />
+            
+            
+            
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="DynamicAreas" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="DynamicArea" minOccurs="0" maxOccurs="unbounded" type="mstns:DynamicAreaType" />
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+        <xs:element name="Seo" minOccurs="0" maxOccurs="1">
+          <xs:annotation>
+            <xs:appinfo>Altazion Note</xs:appinfo>
+            <xs:documentation>Can only be used on ecommerce templates.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:choice>
+              <xs:element minOccurs="0" maxOccurs="unbounded" name="Emplacement">
+                <xs:complexType>
+                  <xs:choice>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="SurTypePage">
+                      <xs:complexType>
+                        <xs:attribute use="required" name="type">
+                          <xs:simpleType>
+                            <xs:restriction base="xs:string">
+                              <xs:enumeration value="*" />
+                              <xs:enumeration value="Page" />
+                              <xs:enumeration value="Article" />
+                              <xs:enumeration value="Descente" />
+                            </xs:restriction>
+                          </xs:simpleType>
+                        </xs:attribute>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:choice>
+                  <xs:attribute type="xs:string" use="required" name="code" />
+                  <xs:attribute type="xs:string" use="required" name="libelle" />
+                </xs:complexType>
+              </xs:element>
+            </xs:choice>
+          </xs:complexType>
+        </xs:element>
+
+
+
+        <xs:element minOccurs="0" maxOccurs="1" name="Settings" type="SettingsType">
+          <xs:annotation>
+            <xs:appinfo>Altazion Note</xs:appinfo>
+            <xs:documentation>Can only be used on Interactive Signage templates.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+
+
+
+
+        <xs:element name="AppConfiguration" minOccurs="0" maxOccurs="1">
+          <xs:complexType>
+            <xs:sequence >
+              <xs:element minOccurs="0" maxOccurs="1" name="Search">
+                <xs:complexType>
+                  <xs:attribute type="xs:integer" name="highlightedItemsCount" />
+                  <xs:attribute type="xs:string" name="highlightedItemsClass" />
+                  <xs:attribute type="xs:integer" name="productsByPage" />
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="Products" minOccurs="0" maxOccurs="1">
+                <xs:complexType>
+                  <xs:choice>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Template">
+                      <xs:complexType>
+                        <xs:attribute type="xs:string" use="required" name="code" />
+                        <xs:attribute type="xs:string" use="required" name="label" />
+                        <xs:attribute type="xs:string" use="required" name="skinId" />
+                      </xs:complexType>
+                    </xs:element>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Images">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element minOccurs="0" maxOccurs="1" name="Big" type="ImageInfo" />
+                          <xs:element minOccurs="0" maxOccurs="1" name="Intermediate" type="ImageInfo" />
+                          <xs:element minOccurs="0" maxOccurs="1" name="Small" type="ImageInfo" />
+                          <xs:element minOccurs="0" maxOccurs="1" name="Tiny" type="ImageInfo" />
+                          <xs:element minOccurs="0" maxOccurs="1" name="Thumbnail" type="ImageInfo" />
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:choice>
+                </xs:complexType>
+              </xs:element>
+              <xs:element minOccurs="0" maxOccurs="unbounded" name="EcommerceOption">
+                <xs:annotation>
+                  <xs:appinfo>Altazion Note</xs:appinfo>
+                  <xs:documentation>Can only be used on ecommerce templates.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:attribute type="xs:string" use="required" name="section" />
+                  <xs:attribute type="xs:string" use="required" name="option" />
+                  <xs:attribute type="xs:string" use="required" name="value" />
+                </xs:complexType>
+              </xs:element>
+
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element>
+
+
+
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="ImageInfo">
+    <xs:attribute type="xs:int" use="required" name="width"></xs:attribute>
+    <xs:attribute type="xs:int" use="required" name="height"></xs:attribute>
+  </xs:complexType>
+
+
+  <xs:complexType name="VariableType">
+    <xs:attribute name="code" type="xs:string" use="required" />
+    <xs:attribute name="label" type="xs:string" use="required" />
+    <xs:attribute name="kind" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="ImageUrl" />
+          <xs:enumeration value="HtmlLine" />
+          <xs:enumeration value="HtmlBlock" />
+          <xs:enumeration value="SearchUrl" />
+          <xs:enumeration value="Number" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="SettingsType">
+    <xs:choice minOccurs="1" maxOccurs="unbounded">
+      <xs:element name="Variable" type="mstns:VariableType" />
+
+      <xs:element name="Group">
+        <xs:complexType>
+          <xs:choice>
+            <xs:element name="Variable" type="mstns:VariableType" minOccurs="1" maxOccurs="unbounded" />
+          </xs:choice>
+          <xs:attribute name="code" type="xs:string" use="required" />
+          <xs:attribute name="label" type="xs:string" use="required" />
+          <xs:attribute name="condition" type="xs:string" use="optional" />
+        </xs:complexType>
+      </xs:element>
+
+    </xs:choice>
+  </xs:complexType>
+
+
+  <xs:complexType name="DynamicAreaType">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="HtmlContent">
+        <xs:complexType>
+          <xs:sequence minOccurs="1" maxOccurs="1">
+            <xs:element name="Header" minOccurs="0" maxOccurs="1" type="xs:string" />
+            <xs:element name="Footer" minOccurs="0" maxOccurs="1" type="xs:string" />
+            <xs:element name="ContentTemplate" minOccurs="1" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <xs:attribute name="code" type="xs:string" use="required" />
+                    <xs:attribute name="label" type="xs:string" use="required" />
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+            <xs:element name="Variable" minOccurs="0" maxOccurs="unbounded" type="VariableType" />
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="DigitalSignagePlaylist">
+        <xs:annotation>
+          <xs:appinfo>Altazion Note</xs:appinfo>
+          <xs:documentation>Can only be used on Interactive Signage templates.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:attribute name="code" type="xs:string" use="required" />
+        </xs:complexType>
+      </xs:element>
+
+    </xs:choice>
+    <xs:attribute name="code" type="xs:string" use="required" />
+    <xs:attribute name="label" type="xs:string" use="required" />
+    <xs:attribute name="description" type="xs:string" use="optional" />
+
+    <xs:attribute name="serverClass" type="xs:string" use="optional" />
+    <xs:attribute name="clientClass" type="xs:string" use="optional" />
+
+  </xs:complexType>
+
+</xs:schema>

@@ -1,0 +1,75 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Template xmlns="https://schemas.altazion.com/sys/template.xsd">
+  <Name>Template - dev-0.1</Name>
+  <Description>Lorem Ipsum</Description>
+  <Author>Dromard Dylan</Author>
+  <BasedOn>Vending</BasedOn>
+    
+  <Content root=".">
+    <Variation code="01" label="Main">
+      <VariationContent kind="ProductPage">
+        <Folder path="main" />
+      </VariationContent>
+      <VariationContent kind="HomePage">
+        <Folder path="main" />
+      </VariationContent>
+    </Variation>
+    <Variation code="02" label="BlueTheme">
+      <VariationContent kind="ProductPage">
+        <Folder path="blueTheme" />
+      </VariationContent>
+      <VariationContent kind="HomePage">
+        <Folder path="blueTheme" />
+      </VariationContent>
+    </Variation>
+    <Variation code="03" label="RedTheme">
+      <VariationContent>
+        <File path="RedTheme/ProductPage.html" />
+        <File path="RedTheme/ProductPage.css" />
+        <File path="RedTheme/ProductPage.js" />
+      </VariationContent>
+      <VariationContent kind="HomePage">
+        <File path="RedTheme/HomePage.html" />
+        <File path="RedTheme/HomePage.css" />
+        <File path="RedTheme/HomePage.js" />
+      </VariationContent>
+    </Variation>
+  </Content>
+
+  
+
+  <DynamicAreas>
+    <DynamicArea code="SCREENSAVER" label="screen saver" >
+      <DigitalSignagePlaylist code="sdfsfdsfd" />
+    </DynamicArea>
+    <DynamicArea code="CAROUSEL" label="sur la home" >
+      <HtmlContent>
+        <Header></Header>
+        <Footer></Footer>
+        <ContentTemplate code="TEST" label="test">sdfsdfsd</ContentTemplate>
+
+        <Variable code="sdfsd" kind="HtmlLine" label="Le titre" />
+
+      </HtmlContent>
+    </DynamicArea>
+  </DynamicAreas>
+
+
+  <Settings>
+    <Variable code="LargeurBanniere" kind="Number" label="LargeurBanniere"  />
+    <Group code="Home" label="Groupe de configuration de la home">
+      <Variable code="NbItems" kind="Number" label="NbItems" />
+    </Group>
+  </Settings>
+
+ 
+  <AppConfiguration>
+    <Search productsByPage="3" />
+    <Products>
+      <Images>
+        <Intermediate height="500" width="500"/>
+      </Images>
+    </Products>
+    <EcommerceOption option="TypePanier" section="Panier" value="Mixte"/>
+  </AppConfiguration>
+</Template>
