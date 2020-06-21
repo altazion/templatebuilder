@@ -10,7 +10,7 @@ namespace program
     {
         static void Main(string[] args)
         {
-            var xsdPath = @"/template_schema.xsd";
+            var xsdPath = "http://schemas.simplement-e.com/sys/template.xsd";
             TemplateUtility util = new TemplateUtility(xsdPath, Directory.GetCurrentDirectory());
 
             util.ProcessStepStart += Validation_stepStarted;
@@ -22,6 +22,8 @@ namespace program
 
             if (result.IsSuccess)
                 util.StartZipProcess("final.zip");
+            else
+                throw new Exception();
 
 
         }
@@ -33,12 +35,12 @@ namespace program
         public static void Validation_ProcessCompleted(object sender, ProcessCompletionArgs e)
         {
             Console.WriteLine("{0} de l'{1} le {2} à {3} | Durée totale : {4} secondes", e.IsSuccess ? "Succès" : "Echec", e.Libelle, e.CompletionTime.ToString("MM/dd/yyyy"), e.CompletionTime.ToString("HH:mm"), (e.CompletionTime - e.StartTime).TotalSeconds);
-            Console.WriteLine("{0} anomalies dont {1} critiques", e.StepProcess.Sum(sp => sp.Anomalies.Count), e.StepProcess.Sum(sp => sp.Anomalies.Where(anom => anom.IsError).Count()));
+            if (!e.IsSuccess)
+            {
+                Console.WriteLine("{0} anomalies dont {1} critiques", e.StepProcess.Sum(sp => sp.Anomalies.Count), e.StepProcess.Sum(sp => sp.Anomalies.Where(anom => anom.IsError).Count()));
+            }
             Console.WriteLine("- - - - - -   - - - - - - - - ");
             Console.WriteLine("");
-
-            if (!e.IsSuccess)
-                throw new Exception("Echec de la validation du template.");
         }
 
 
@@ -58,7 +60,7 @@ namespace program
         public static void Validation_stepCompleted(object sender, ProcessStepCompletionArgs e)
         {
             Console.WriteLine(" |{0} de : {1} le {2} à {3} | Durée totale : {4} secondes", e.IsSuccess ? "Succès" : "Echec", e.Libelle, e.CompletionTime.ToString("MM/dd/yyyy"), e.CompletionTime.ToString("HH:mm"), (e.CompletionTime - e.StartTime).TotalSeconds);
-            if (e.Anomalies.Count > 0)
+            if (!e.IsSuccess)
             {
                 Console.WriteLine(" |{0} anomalies dont {1} critiques", e.Anomalies.Count, e.Anomalies.Where(x => x.IsError).Count());
                 for (int i = 0; i < e.Anomalies.Count; i++)

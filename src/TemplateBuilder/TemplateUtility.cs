@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Schema;
@@ -49,7 +50,7 @@ namespace TemplateBuilder
             if (string.IsNullOrEmpty(path))
                 throw new ArgumentException("L'url du repository du template est vide.");
 
-            if (!File.Exists(schemaUri))
+            if (!IsSchemaAvailable(schemaUri))
                 throw new ArgumentException("Impossible de récupérer le schéma.");
 
             _processStartArgs = new ProcessStartArgs()
@@ -74,6 +75,10 @@ namespace TemplateBuilder
             if (_processCompletionArgs.XmlDocumentInformation.IsLoaded)
                 if (ValidateXml())
                     ValidateContent();
+            else
+                {
+                    throw new ArgumentException("Impossible de récupérer le xml.");
+                }
 
 
             _processCompletionArgs.CompletionTime = DateTime.Now;
@@ -484,7 +489,9 @@ namespace TemplateBuilder
                                 xdi.FileCompletePath = completePath;
                                 xdi.IsLoaded = true;
                             }
-                            catch (Exception) { }
+                            catch (Exception e) 
+                            { 
+                            }
                         }
                         break;
                 }
@@ -511,8 +518,17 @@ namespace TemplateBuilder
 
         private string GetFormatedName(string name)
         {
-            return name;
-            //return name.Replace(@"/", @"\");
+            return name.Replace(@"/", @"\");
+        }
+
+        private bool IsSchemaAvailable(string url)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                var restponse = client.GetAsync(url).Result;
+
+                return restponse.StatusCode == System.Net.HttpStatusCode.OK;
+            }
         }
 
 
