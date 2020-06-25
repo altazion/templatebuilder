@@ -120,6 +120,9 @@
   <data name="ContentValidation_AucuneVariation" xml:space="preserve">
     <value>Aucune Variation trouvée</value>
   </data>
+  <data name="ContentValidation_DefaultVariationInvalide" xml:space="preserve">
+    <value>La variation indiquée dans vos paramètres de publication est invalide</value>
+  </data>
   <data name="ContentValidation_DossierNonExistant" xml:space="preserve">
     <value>Le dossier {0} n'existe pas, le content root est-il le bon ?</value>
   </data>
@@ -135,6 +138,12 @@
   <data name="ContentValidation_FichierNonExistant" xml:space="preserve">
     <value>Le fichier {0} du ContentKind {1} n'a pas pu être récupéré.</value>
   </data>
+  <data name="ContentValidation_SettingNoMatchWithVariable" xml:space="preserve">
+    <value>Votre setting {0} ne correspond à aucune variable </value>
+  </data>
+  <data name="ContentValidation_SettingTypeInvalide" xml:space="preserve">
+    <value>La valeur de votre setting {0} n'est pas compatible avec son type {1}</value>
+  </data>
   <data name="ContentValidation_SharedResourcesIntrouvable" xml:space="preserve">
     <value>La ressource partagée de type {0} est introuvable.</value>
   </data>
@@ -149,6 +158,12 @@
   </data>
   <data name="XmlRecuperation_Title" xml:space="preserve">
     <value>Récupération du template</value>
+  </data>
+  <data name="XmlRecuperation_TypeVariableInvalide" xml:space="preserve">
+    <value>Le type de votre variable {0} n'est pas valide </value>
+  </data>
+  <data name="XmlRecuperation_Variables" xml:space="preserve">
+    <value>Récupération des variables de configuration</value>
   </data>
   <data name="XmlValidation_NoXml" xml:space="preserve">
     <value>Aucun .xml n'est présent à la racine de votre dossier</value>

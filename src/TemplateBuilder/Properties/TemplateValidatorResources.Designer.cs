@@ -70,6 +70,15 @@ namespace TemplateBuilder.Properties {
         }
         
         /// <summary>
+        ///   Recherche une chaîne localisée semblable à La variation indiquée dans vos paramètres de publication est invalide.
+        /// </summary>
+        internal static string ContentValidation_DefaultVariationInvalide {
+            get {
+                return ResourceManager.GetString("ContentValidation_DefaultVariationInvalide", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Recherche une chaîne localisée semblable à Le dossier {0} n&apos;existe pas, le content root est-il le bon ?.
         /// </summary>
         internal static string ContentValidation_DossierNonExistant {
@@ -115,6 +124,24 @@ namespace TemplateBuilder.Properties {
         }
         
         /// <summary>
+        ///   Recherche une chaîne localisée semblable à Votre setting {0} ne correspond à aucune variable .
+        /// </summary>
+        internal static string ContentValidation_SettingNoMatchWithVariable {
+            get {
+                return ResourceManager.GetString("ContentValidation_SettingNoMatchWithVariable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à La valeur de votre setting {0} n&apos;est pas compatible avec son type {1}.
+        /// </summary>
+        internal static string ContentValidation_SettingTypeInvalide {
+            get {
+                return ResourceManager.GetString("ContentValidation_SettingTypeInvalide", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Recherche une chaîne localisée semblable à La ressource partagée de type {0} est introuvable..
         /// </summary>
         internal static string ContentValidation_SharedResourcesIntrouvable {
@@ -156,6 +183,24 @@ namespace TemplateBuilder.Properties {
         internal static string XmlRecuperation_Title {
             get {
                 return ResourceManager.GetString("XmlRecuperation_Title", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Le type de votre variable {0} n&apos;est pas valide .
+        /// </summary>
+        internal static string XmlRecuperation_TypeVariableInvalide {
+            get {
+                return ResourceManager.GetString("XmlRecuperation_TypeVariableInvalide", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Recherche une chaîne localisée semblable à Récupération des variables de configuration.
+        /// </summary>
+        internal static string XmlRecuperation_Variables {
+            get {
+                return ResourceManager.GetString("XmlRecuperation_Variables", resourceCulture);
             }
         }
         

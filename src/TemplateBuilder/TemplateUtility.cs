@@ -1,11 +1,9 @@
-﻿using Octokit;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Net.Http;
-using System.Text.RegularExpressions;
+using System.Text;
 using System.Xml;
 using System.Xml.Schema;
 using TemplateBuilder.Properties;
@@ -16,66 +14,64 @@ namespace TemplateBuilder
     public class TemplateUtility
     {
 
-        public event EventHandler<ProcessStepCompletionArgs> ProcessStepCompletion;
-        protected virtual void OnProcessStepCompletion(ProcessStepCompletionArgs e) => ProcessStepCompletion?.Invoke(this, e);
+        #region Events
+        public event EventHandler<ProcessStartArgs> ProcessStart;
+        protected virtual void OnProcessStart(ProcessStartArgs e) => ProcessStart?.Invoke(this, e);
+
+        public event EventHandler<ProcessCompletionArgs> ProcessCompletion;
+        protected virtual void OnProcessCompletion(ProcessCompletionArgs e) => ProcessCompletion?.Invoke(this, e);
 
 
         public event EventHandler<ProcessStepStartArgs> ProcessStepStart;
         protected virtual void OnProcessStepStart(ProcessStepStartArgs e) => ProcessStepStart?.Invoke(this, e);
 
+        public event EventHandler<ProcessStepCompletionArgs> ProcessStepCompletion;
+        protected virtual void OnProcessStepCompletion(ProcessStepCompletionArgs e) => ProcessStepCompletion?.Invoke(this, e);
 
         public event EventHandler<ProcessAnomaly> ProcessStepAnomaly;
         protected virtual void OnProcessStepAnomaly(ProcessAnomaly e) => ProcessStepAnomaly?.Invoke(this, e);
 
 
-
-        public event EventHandler<ProcessStartArgs> ProcessStart;
-        protected virtual void OnProcessStart(ProcessStartArgs e) => ProcessStart?.Invoke(this, e);
-
-
-        public event EventHandler<ProcessCompletionArgs> ProcessCompletion;
-        protected virtual void OnProcessCompletion(ProcessCompletionArgs e) => ProcessCompletion?.Invoke(this, e);
-
-        private string _repositoryRegex = @"([\S]+)\/([\S]+)";
-        private string _tempGithubFolder;
-
         private ProcessStartArgs _processStartArgs;
         private ProcessCompletionArgs _processCompletionArgs;
+        private string temp_dir = @"alt_temp";
+        #endregion
+
         private string[] _unusedFiles { get; set; }
 
-        public TemplateUtility(string schemaUri, string path)
+        public TemplateUtility(string schemaPath, string path)
         {
-            if (string.IsNullOrEmpty(schemaUri))
-                throw new ArgumentException("Le chemin du schéma est vide.");
             if (string.IsNullOrEmpty(path))
                 throw new ArgumentException("L'url du repository du template est vide.");
-
-            if (!IsSchemaAvailable(schemaUri))
+            if (string.IsNullOrEmpty(schemaPath))
                 throw new ArgumentException("Impossible de récupérer le schéma.");
 
             _processStartArgs = new ProcessStartArgs()
             {
-                SchemaUri = schemaUri,
-                TemplatePath = path,
+                SchemaUri = schemaPath,
+                TemplateDirectoryPath = path,
                 Libelle = string.Format(TemplateValidatorResources.Process_Title, path)
             };
+
+            _unusedFiles = new string[] { };
         }
-
-
 
 
         public TemplateValidationResult StartTemplateValidationProcess()
         {
-            _unusedFiles = new string[] { };
             _processStartArgs.StartTime = DateTime.Now;
             OnProcessStart(_processStartArgs);
             _processCompletionArgs = new ProcessCompletionArgs(_processStartArgs);
+            _processCompletionArgs.XmlDocumentInformation = GetXMLContent();
 
-            _processCompletionArgs.XmlDocumentInformation = GetContent();
+
             if (_processCompletionArgs.XmlDocumentInformation.IsLoaded)
-                if (ValidateXml())
+                if (ValidateXMLFormat())
+                {
+                    _processCompletionArgs.XmlDocumentInformation.Variables = GetVariables(_processCompletionArgs.XmlDocumentInformation.Document);
                     ValidateContent();
-            else
+                }
+                else
                 {
                     throw new ArgumentException("Impossible de récupérer le xml.");
                 }
@@ -99,11 +95,13 @@ namespace TemplateBuilder
             }
             return result;
         }
-        public bool StartZipProcess(string zipFileName, bool ignoreUnusedFiles = true)
+
+        #region ZIP Process
+        public bool StartZipProcess(string zipFileName)
         {
-            return StartZipProcess(_processStartArgs.TemplatePath, zipFileName, ignoreUnusedFiles);
+            return StartZipProcess(_processStartArgs.TemplateDirectoryPath, zipFileName);
         }
-        public bool StartZipProcess(string from, string zipFileName,  bool ignoreUnusedFiles = true)
+        public bool StartZipProcess(string from, string zipFileName)
         {
             var fullTargetPath = zipFileName;
             if (Path.GetExtension(fullTargetPath) == string.Empty)
@@ -113,44 +111,35 @@ namespace TemplateBuilder
             if (File.Exists(fullTargetPath))
                 File.Delete(fullTargetPath);
 
-            if (ignoreUnusedFiles && _unusedFiles != null && _unusedFiles.Length > 0)
-            {
-                var tempDir = Path.Combine(from, @"alt_temp");
-                //var dirs = Directory.GetDirectories(from, "*", SearchOption.AllDirectories);
-                try
-                {
-                    var so = new DirectoryInfo(from);
-                    var te = new DirectoryInfo(tempDir);
-                    CopyAll(so, te);
-                }
-                catch (Exception e)
-                {
-                    Directory.Delete(tempDir, true);
-                    throw e;
-                }
-                ZipFile.CreateFromDirectory(tempDir, fullTargetPath);
-                Directory.Delete(tempDir, true);
-                return true;
-            }
 
-            ZipFile.CreateFromDirectory(from, fullTargetPath);
+            var tempDir = Path.Combine(from, temp_dir);
+            try
+            {
+                var so = new DirectoryInfo(from);
+                var te = new DirectoryInfo(tempDir);
+                CopyUsedFilesForZip(so, te);
+            }
+            catch (Exception e)
+            {
+                Directory.Delete(tempDir, true);
+                throw e;
+            }
+            ZipFile.CreateFromDirectory(tempDir, fullTargetPath);
+            Directory.Delete(tempDir, true);
             return true;
         }
-        private void CopyAll(DirectoryInfo source, DirectoryInfo target)
+        private void CopyUsedFilesForZip(DirectoryInfo source, DirectoryInfo target)
         {
-
             if (!Directory.Exists(target.FullName))
                 Directory.CreateDirectory(target.FullName);
 
-            // Copy each file into the new directory.
             foreach (FileInfo fi in source.GetFiles())
             {
-                if (_unusedFiles.Contains(fi.FullName.ToLower())) continue;
-                Console.WriteLine(@"Copying {0}\{1}", target.FullName, fi.Name);
+                if (_unusedFiles != null && _unusedFiles.Contains(fi.FullName.ToLower())) continue;
+                Console.WriteLine(@"Copie de {0}\{1}", target.FullName, fi.Name);
                 fi.CopyTo(Path.Combine(target.FullName, fi.Name), true);
             }
 
-            // Copy each subdirectory using recursion.
             foreach (DirectoryInfo diSourceSubDir in source.GetDirectories())
             {
                 if (diSourceSubDir.FullName.Equals(target.FullName))
@@ -158,19 +147,142 @@ namespace TemplateBuilder
                 bool hasUsedFiles = false;
                 foreach (FileInfo fi in diSourceSubDir.GetFiles())
                 {
-                    if (_unusedFiles.Contains(fi.FullName.ToLower())) continue;
+                    if (_unusedFiles != null && _unusedFiles.Contains(fi.FullName.ToLower())) continue;
                     hasUsedFiles = true;
                 }
                 if (hasUsedFiles)
                 {
-                    DirectoryInfo nextTargetSubDir =
-                        target.CreateSubdirectory(diSourceSubDir.Name);
-                    CopyAll(diSourceSubDir, nextTargetSubDir);
+                    DirectoryInfo nextTargetSubDir = target.CreateSubdirectory(diSourceSubDir.Name);
+                    CopyUsedFilesForZip(diSourceSubDir, nextTargetSubDir);
                 }
             }
         }
+        #endregion
 
-        private bool ValidateXml()
+        private XmlDocumentInformation GetXMLContent()
+        {
+            var startArgs = new ProcessStepStartArgs()
+            {
+                StartTime = DateTime.Now,
+                Libelle = TemplateValidatorResources.XmlRecuperation_Title,
+            };
+            var completeArgs = new ProcessStepCompletionArgs(startArgs)
+            {
+                IsSuccess = true
+            };
+            OnProcessStepStart(startArgs);
+            _processCompletionArgs.StepProcess.Add(completeArgs);
+
+
+            XmlDocumentInformation xdi = new XmlDocumentInformation();
+            string[] rootFiles = Directory.GetFiles(_processStartArgs.TemplateDirectoryPath, "*.xml", SearchOption.TopDirectoryOnly);
+
+            if (rootFiles.Length != 1)
+            {
+                if (rootFiles.Length > 1)
+                    AddAnomaly(completeArgs, TemplateValidatorResources.XmlValidation_TooManyXml, true);
+                else if (rootFiles.Length == 0)
+                    AddAnomaly(completeArgs, TemplateValidatorResources.XmlValidation_NoXml, true);
+
+                completeArgs.CompletionTime = DateTime.Now;
+                OnProcessStepCompletion(completeArgs);
+                return xdi;
+            }
+
+            XmlDocument doc = new XmlDocument();
+            foreach (string fileName in rootFiles)
+            {
+                var completePath = Path.Combine(_processStartArgs.TemplateDirectoryPath, Path.GetFileName(fileName));
+                switch (Path.GetExtension(fileName).ToLowerInvariant())
+                {
+                    case ".xml":
+                        using (var entryStream = File.OpenRead(completePath))
+                        {
+                            try
+                            {
+                                doc.Load(entryStream);
+                                xdi.FileCompletePath = completePath;
+                                xdi.IsLoaded = true;
+                            }
+                            catch (Exception e)
+                            {
+                            }
+                        }
+                        break;
+                }
+            }
+            xdi.Document = doc;
+
+
+            completeArgs.CompletionTime = DateTime.Now;
+            OnProcessStepCompletion(completeArgs);
+            return xdi;
+        }
+        private List<Variable> GetVariables(XmlDocument doc)
+        {
+            var startArgs = new ProcessStepStartArgs()
+            {
+                StartTime = DateTime.Now,
+                Libelle = TemplateValidatorResources.XmlRecuperation_Variables,
+            };
+            var completeArgs = new ProcessStepCompletionArgs(startArgs)
+            {
+                IsSuccess = true
+            };
+            OnProcessStepStart(startArgs);
+            _processCompletionArgs.StepProcess.Add(completeArgs);
+
+
+            // Récupération des variables
+            List<Variable> variables = new List<Variable>();
+            var vars = doc.DocumentElement.SelectNodes("//*[local-name()='Variable']");
+
+            if (vars.Count > 0)
+            {
+                foreach (XmlNode variableNode in vars)
+                {
+                    var variableCode = variableNode.Attributes.GetNamedItem("code").Value;
+                    var variableLabel = variableNode.Attributes.GetNamedItem("label").Value;
+                    var variableKind = variableNode.Attributes.GetNamedItem("kind").Value;
+                    var variableDefaultValue = variableNode.Attributes.GetNamedItem("defaultValue");
+
+
+                    if (!Enum.TryParse(variableKind, out VariableKind vk))
+                    {
+                        AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.XmlRecuperation_TypeVariableInvalide, variableLabel), true);
+                    }
+                    Variable variable = new Variable(variableCode, variableLabel, vk, variableDefaultValue == null ? "" : variableDefaultValue.Value);
+
+
+                    XmlNode currentNode = variableNode;
+                    while (currentNode.ParentNode != null && !currentNode.Name.Equals("Settings"))
+                    {
+                        var parent = currentNode.ParentNode;
+                        switch (parent.Name)
+                        {
+                            case "SettingsPage":
+                                variable.SettingsPage = parent.Attributes.GetNamedItem("kind").Value;
+                                break;
+                            case "Group":
+                                variable.Group = parent.Attributes.GetNamedItem("code").Value;
+                                break;
+                            case "Variation":
+                                variable.Variation = parent.Attributes.GetNamedItem("code").Value;
+                                break;
+                        }
+                        currentNode = currentNode.ParentNode;
+                    }
+                    if (!variables.Contains(variable))
+                        variables.Add(variable);
+                }
+            }
+
+            completeArgs.CompletionTime = DateTime.Now;
+            OnProcessStepCompletion(completeArgs);
+            return variables;
+        }
+
+        private bool ValidateXMLFormat()
         {
             var startArgs = new ProcessStepStartArgs()
             {
@@ -196,7 +308,7 @@ namespace TemplateBuilder
             };
 
 
-            settings.ValidationEventHandler += (s, e) => AddError(completeArgs, e.Message, true);
+            settings.ValidationEventHandler += (s, e) => AddAnomaly(completeArgs, e.Message, true);
 
             using (XmlReader reader = XmlReader.Create(_processCompletionArgs.XmlDocumentInformation.FileCompletePath, settings))
             {
@@ -221,9 +333,9 @@ namespace TemplateBuilder
 
             OnProcessStepStart(startArgs);
 
-            var rootPath = _processStartArgs.TemplatePath;
+            var rootPath = _processStartArgs.TemplateDirectoryPath;
             string[] fileEntries;
-            List<string> unusedFiles = Directory.GetFiles(rootPath, "*.*", SearchOption.AllDirectories).Select(x => x.ToLowerInvariant()).ToList();
+            List<string> unusedFiles = Directory.GetFiles(rootPath, "*.*", SearchOption.AllDirectories).Where(x => x.Contains(temp_dir)).Select(x => x.ToLowerInvariant()).ToList();
             unusedFiles.Remove(_processCompletionArgs.XmlDocumentInformation.FileCompletePath.ToLowerInvariant()); // On remove le .xml racine.
             XmlDocument doc = _processCompletionArgs.XmlDocumentInformation.Document;
 
@@ -231,22 +343,25 @@ namespace TemplateBuilder
             var rootAttribute = contentNode[0].Attributes.GetNamedItem("root");
 
             if (!rootAttribute.Value.Equals("."))
-                rootPath = Path.Combine(_processStartArgs.TemplatePath, rootAttribute.Value);
+                rootPath = Path.Combine(_processStartArgs.TemplateDirectoryPath, rootAttribute.Value);
 
 
-            var variationsElements = doc.DocumentElement.GetElementsByTagName("Variation");
-
+            var variationsElements = contentNode[0].ChildNodes;
+            List<string> variationsCodes = new List<string>();
+            // Les variations et parts
             if (variationsElements.Count == 0)
-                AddError(completeArgs, TemplateValidatorResources.ContentValidation_AucuneVariation, true);
+                AddAnomaly(completeArgs, TemplateValidatorResources.ContentValidation_AucuneVariation, true);
             else
             {
                 foreach (XmlNode n in variationsElements)
                 {
-                    var variationLabel = n.Attributes.GetNamedItem("label").Value;
+                    if (!n.Name.Equals("Variation")) continue;
+                    var variationcode = n.Attributes.GetNamedItem("code").Value;
+                    variationsCodes.Add(variationcode);
+
                     foreach (XmlNode t in n.ChildNodes)
                     {
                         var variationContentKind = t.Attributes.GetNamedItem("kind").Value;
-
                         if (!t.Name.Equals("VariationContent")) continue;
 
                         if (t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("Folder")).Count() == 1)
@@ -255,11 +370,12 @@ namespace TemplateBuilder
                             var folderNode = t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("Folder")).FirstOrDefault();
                             var partPath = folderNode.Attributes.GetNamedItem("path").Value;
                             var currDir = Path.Combine(rootPath, partPath);
+
                             if (Directory.Exists(currDir))
                                 fileEntries = Directory.GetFiles(currDir, "*", SearchOption.AllDirectories);
                             else
                             {
-                                AddError(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_DossierNonExistant, currDir), true);
+                                AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_DossierNonExistant, currDir), true);
                                 continue;
                             }
 
@@ -282,13 +398,13 @@ namespace TemplateBuilder
                             }
                             if (!htmlFound)
                             {
-                                AddError(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierHtmlNonExistant, variationContentKind), true);
+                                AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierHtmlNonExistant, variationContentKind), true);
                             }
                         }
                         else if (t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("File")).Count() >= 1)
                         {
                             var fileNodes = t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("File")).ToList();
-                            var dir = Path.Combine(rootPath, variationLabel);
+                            var dir = Path.Combine(rootPath, variationcode);
                             var filesDirFounded = false;
 
                             for (int i = 0; i < fileNodes.Count(); i++)
@@ -297,7 +413,7 @@ namespace TemplateBuilder
                                     fileEntries = Directory.GetFiles(rootPath, fileNodes[i].Attributes.GetNamedItem("path").Value);
                                 else
                                 {
-                                    AddError(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierNonExistant, fileNodes[i].Attributes.GetNamedItem("path").Value, variationContentKind), true);
+                                    AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierNonExistant, fileNodes[i].Attributes.GetNamedItem("path").Value, variationContentKind), true);
                                     continue;
                                 }
 
@@ -322,112 +438,215 @@ namespace TemplateBuilder
 
                                 }
                                 if (!fileFound)
-                                    AddError(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierNonExistant, fileNodes[i].Attributes.GetNamedItem("path").Value, variationContentKind), true);
+                                    AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierNonExistant, fileNodes[i].Attributes.GetNamedItem("path").Value, variationContentKind), true);
                             }
                         }
                     }
                 }
             }
 
-            foreach (XmlNode t in doc.DocumentElement.GetElementsByTagName("Shared"))
+
+            var shareds = doc.DocumentElement.GetElementsByTagName("Shared");
+            if (shareds.Count > 0)
             {
-                var sharedKind = t.Attributes.GetNamedItem("kind").Value.ToLower();
-
-
-                if (t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("Folder")).Count() == 1)
+                // Les éléments partagés
+                foreach (XmlNode t in shareds)
                 {
-                    var folderNode = t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("Folder")).FirstOrDefault();
-                    var path = folderNode.Attributes.GetNamedItem("path").Value;
-                    var currDir = Path.Combine(rootPath, path);
-                    if (Directory.Exists(currDir))
-                        fileEntries = Directory.GetFiles(currDir, "*", SearchOption.AllDirectories);
-                    else
-                    {
-                        AddError(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_DossierNonExistant, currDir), true);
-                        continue;
-                    }
+                    var sharedKind = t.Attributes.GetNamedItem("kind").Value.ToLower();
 
 
-                    for (int i = 0; i < fileEntries.Length; i++)
+                    if (t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("Folder")).Count() == 1)
                     {
-                        bool kindFound = false;
-                        var fileName = GetFormatedName(fileEntries[i].ToLowerInvariant());
-                        if (!fileName.Contains(t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())) continue;
-                        switch (Path.GetExtension(fileName))
-                        {
-                            case ".html":
-                                if (sharedKind.Equals("html"))
-                                    kindFound = true;
-                                break;
-                            case ".css":
-                                if (sharedKind.Equals("css"))
-                                    kindFound = true;
-                                break;
-                            case ".js":
-                                if (sharedKind.Equals("js"))
-                                    kindFound = true;
-                                break;
-                        }
-                        if (kindFound)
-                            unusedFiles.Remove(fileName);
-                    }
-                }
-                else if (t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("File")).Count() >= 1)
-                {
-                    var fileNodes = t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("File")).ToList();
-                    var dir = Path.Combine(rootPath);
-                    var filesDirFounded = false;
-
-                    for (int i = 0; i < fileNodes.Count(); i++)
-                    {
-                        if (!filesDirFounded && File.Exists(Path.Combine(rootPath, fileNodes[i].Attributes.GetNamedItem("path").Value)))
-                            fileEntries = Directory.GetFiles(rootPath, fileNodes[i].Attributes.GetNamedItem("path").Value);
+                        var folderNode = t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("Folder")).FirstOrDefault();
+                        var path = folderNode.Attributes.GetNamedItem("path").Value;
+                        var currDir = Path.Combine(rootPath, path);
+                        if (Directory.Exists(currDir))
+                            fileEntries = Directory.GetFiles(currDir, "*", SearchOption.AllDirectories);
                         else
                         {
-                            AddError(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierNonExistant, fileNodes[i].Attributes.GetNamedItem("path").Value, sharedKind), true);
+                            AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_DossierNonExistant, currDir), true);
                             continue;
                         }
 
-                        var fileAttributeValue = fileNodes[i].Attributes.GetNamedItem("path").Value;
-                        bool fileFound = false;
-                        for (int z = 0; z < fileEntries.Length; z++)
+
+                        for (int i = 0; i < fileEntries.Length; i++)
                         {
-                            var fileName = GetFormatedName(fileEntries[z].ToLowerInvariant());
-                            switch (Path.GetExtension(fileName).ToLower())
+                            bool kindFound = false;
+                            var fileName = GetFormatedName(fileEntries[i].ToLowerInvariant());
+                            if (!fileName.Contains(t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())) continue;
+                            switch (Path.GetExtension(fileName))
                             {
                                 case ".html":
                                     if (sharedKind.Equals("html"))
-                                    {
-                                        fileFound = true;
-                                        unusedFiles.Remove(fileName);
-                                    }
+                                        kindFound = true;
                                     break;
                                 case ".css":
                                     if (sharedKind.Equals("css"))
-                                    {
-                                        fileFound = true;
-                                        unusedFiles.Remove(fileName);
-                                    }
+                                        kindFound = true;
                                     break;
                                 case ".js":
                                     if (sharedKind.Equals("js"))
-                                    {
-                                        fileFound = true;
-                                        unusedFiles.Remove(fileName);
-                                    }
+                                        kindFound = true;
                                     break;
                             }
-                            if (fileFound)
-                                break;
+                            if (kindFound)
+                                unusedFiles.Remove(fileName);
                         }
-                        if (!fileFound)
-                            AddError(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierNonExistant, fileNodes[i].Attributes.GetNamedItem("path").Value, sharedKind), true);
+                    }
+                    else if (t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("File")).Count() >= 1)
+                    {
+                        var fileNodes = t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("File")).ToList();
+                        var dir = Path.Combine(rootPath);
+                        var filesDirFounded = false;
+
+                        for (int i = 0; i < fileNodes.Count(); i++)
+                        {
+                            if (!filesDirFounded && File.Exists(Path.Combine(rootPath, fileNodes[i].Attributes.GetNamedItem("path").Value)))
+                                fileEntries = Directory.GetFiles(rootPath, fileNodes[i].Attributes.GetNamedItem("path").Value);
+                            else
+                            {
+                                AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierNonExistant, fileNodes[i].Attributes.GetNamedItem("path").Value, sharedKind), true);
+                                continue;
+                            }
+
+                            var fileAttributeValue = fileNodes[i].Attributes.GetNamedItem("path").Value;
+                            bool fileFound = false;
+                            for (int z = 0; z < fileEntries.Length; z++)
+                            {
+                                var fileName = GetFormatedName(fileEntries[z].ToLowerInvariant());
+                                switch (Path.GetExtension(fileName).ToLower())
+                                {
+                                    case ".html":
+                                        if (sharedKind.Equals("html"))
+                                        {
+                                            fileFound = true;
+                                            unusedFiles.Remove(fileName);
+                                        }
+                                        break;
+                                    case ".css":
+                                        if (sharedKind.Equals("css"))
+                                        {
+                                            fileFound = true;
+                                            unusedFiles.Remove(fileName);
+                                        }
+                                        break;
+                                    case ".js":
+                                        if (sharedKind.Equals("js"))
+                                        {
+                                            fileFound = true;
+                                            unusedFiles.Remove(fileName);
+                                        }
+                                        break;
+                                }
+                                if (fileFound)
+                                    break;
+                            }
+                            if (!fileFound)
+                                AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierNonExistant, fileNodes[i].Attributes.GetNamedItem("path").Value, sharedKind), true);
+                        }
                     }
                 }
             }
 
+            var publishSettings = doc.DocumentElement.GetElementsByTagName("PublishSettings");
+
+            if (publishSettings.Count == 1)
+            {
+                // Les settings 
+                var settings = doc.DocumentElement.SelectNodes("//*[local-name()='Setting']");
+                if (settings.Count > 0)
+                {
+                    foreach (XmlNode t in settings)
+                    {
+                        bool matchingVariableFound = false;
+                        var code = t.Attributes.GetNamedItem("code").Value;
+
+                        for (int i = 0; i < _processCompletionArgs.XmlDocumentInformation.Variables.Count; i++)
+                        {
+                            var variable = _processCompletionArgs.XmlDocumentInformation.Variables[i];
+
+                            if (code.Equals(variable.GetFormatedCode()))
+                            {
+                                var value = t.Attributes.GetNamedItem("value").Value;
+                                bool isValueValid = true;
+                                if (variable.Kind == VariableKind.Number)
+                                {
+                                    if (!int.TryParse(value, out int intR) && !float.TryParse(value, out float floatR))
+                                    {
+                                        isValueValid = false;
+                                    }
+
+                                }
+                                else if (variable.Kind == VariableKind.InteractiveCatalogGuid)
+                                {
+                                    if (!Guid.TryParse(value, out Guid guidrR))
+                                    {
+                                        isValueValid = false;
+                                    }
+                                }
+                                else if (variable.Kind == VariableKind.Date)
+                                {
+                                    if (!DateTime.TryParse(value, out DateTime datetimeR))
+                                    {
+                                        isValueValid = false;
+                                    }
+                                }
+
+                                if (!isValueValid)
+                                {
+                                    AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_SettingTypeInvalide, value, variable.Kind), true);
+                                }
+
+                                matchingVariableFound = true;
+
+
+                            }
+                        }
+                        if (!matchingVariableFound)
+                        {
+                            AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_SettingNoMatchWithVariable, code), true);
+                        }
+                    }
+                }
+                // variations
+                var publishvariations = doc.DocumentElement.GetElementsByTagName("Variations");
+                if (publishvariations.Count == 1)
+                {
+                    bool found = false;
+                    var publishvariation = publishvariations[0];
+                    foreach (XmlNode child in publishvariation.ChildNodes)
+                    {
+                        if (!child.Name.Equals("Variation")) continue;
+                        var code = child.Attributes.GetNamedItem("code").Value;
+
+                        for (int i = 0; i < variationsCodes.Count; i++)
+                        {
+                            var variation = variationsCodes[i];
+
+                            if (code.Equals(variation, StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found)
+                        AddAnomaly(completeArgs, TemplateValidatorResources.ContentValidation_DefaultVariationInvalide, true);
+                }
+                else
+                {
+                    AddAnomaly(completeArgs, TemplateValidatorResources.ContentValidation_DefaultVariationInvalide, true);
+
+                }
+            }
+
+
+
+
             for (int i = 0; i < unusedFiles.Count; i++)
-                AddError(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierInutile, unusedFiles[i]), false);
+            {
+                AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierInutile, unusedFiles[i]), false);
+            }
 
 
             _unusedFiles = unusedFiles.ToArray();
@@ -437,73 +656,15 @@ namespace TemplateBuilder
 
         }
 
-        private XmlDocumentInformation GetContent()
+
+
+        private string GetFormatedName(string name)
         {
-            var startArgs = new ProcessStepStartArgs()
-            {
-                StartTime = DateTime.Now,
-                Libelle = TemplateValidatorResources.XmlRecuperation_Title,
-            };
-
-            OnProcessStepStart(startArgs);
-
-            var completeArgs = new ProcessStepCompletionArgs(startArgs)
-            {
-                IsSuccess = true
-            };
-
-            _processCompletionArgs.StepProcess.Add(completeArgs);
-
-
-
-            XmlDocumentInformation xdi = new XmlDocumentInformation();
-            string[] rootFiles = Directory.GetFiles(_processStartArgs.TemplatePath, "*.xml", SearchOption.TopDirectoryOnly);
-
-            // Non pas zéro, pas deux, pas dix, pas cent, pas mille, pas mille deux cent dix mais un .xml !
-            if (rootFiles.Length != 1)
-            {
-                if (rootFiles.Length > 1)
-                    AddError(completeArgs, TemplateValidatorResources.XmlValidation_TooManyXml, true);
-                else if (rootFiles.Length == 0)
-                    AddError(completeArgs, TemplateValidatorResources.XmlValidation_NoXml, true);
-
-                completeArgs.CompletionTime = DateTime.Now;
-                OnProcessStepCompletion(completeArgs);
-                return xdi;
-            }
-
-            XmlDocument doc = new XmlDocument();
-
-            foreach (string fileName in rootFiles)
-            {
-                var completePath = Path.Combine(_processStartArgs.TemplatePath, Path.GetFileName(fileName));
-                switch (Path.GetExtension(fileName).ToLowerInvariant())
-                {
-                    case ".xml":
-                        using (var entryStream = File.OpenRead(completePath))
-                        {
-                            try
-                            {
-
-                                doc.Load(entryStream);
-                                xdi.FileCompletePath = completePath;
-                                xdi.IsLoaded = true;
-                            }
-                            catch (Exception e) 
-                            { 
-                            }
-                        }
-                        break;
-                }
-            }
-
-            xdi.Document = doc;
-
-            completeArgs.CompletionTime = DateTime.Now;
-            OnProcessStepCompletion(completeArgs);
-            return xdi;
+            return name.Replace(@"/", @"\"); // local
+            return name; // github
         }
-        private void AddError(ProcessStepCompletionArgs datas, string message, bool isError)
+
+        private void AddAnomaly(ProcessStepCompletionArgs datas, string message, bool isError)
         {
             datas.Anomalies.Add(new ProcessAnomaly()
             {
@@ -515,24 +676,12 @@ namespace TemplateBuilder
 
             OnProcessStepAnomaly(datas.Anomalies.Last());
         }
-
-        private string GetFormatedName(string name)
-        {
-            return name.Replace(@"/", @"\");
-        }
-
-        private bool IsSchemaAvailable(string url)
-        {
-            using (HttpClient client = new HttpClient())
-            {
-                var restponse = client.GetAsync(url).Result;
-
-                return restponse.StatusCode == System.Net.HttpStatusCode.OK;
-            }
-        }
-
-
     }
+
+
+
+
+
 
     public class ProcessAnomaly
     {
@@ -544,6 +693,7 @@ namespace TemplateBuilder
         public bool IsLoaded { get; set; }
         public string FileCompletePath { get; set; }
         public XmlDocument Document { get; set; }
+        public List<Variable> Variables { get; set; }
     }
 
 
@@ -576,7 +726,7 @@ namespace TemplateBuilder
     public class ProcessStartArgs : ProcessStepStartArgs
     {
         public string SchemaUri { get; set; }
-        public string TemplatePath { get; set; }
+        public string TemplateDirectoryPath { get; set; }
     }
     public class ProcessCompletionArgs
     {
@@ -598,7 +748,7 @@ namespace TemplateBuilder
             StepProcess = new List<ProcessStepCompletionArgs>();
             Libelle = startargs.Libelle;
             SchemaUri = startargs.SchemaUri;
-            TemplatePath = startargs.TemplatePath;
+            TemplatePath = startargs.TemplateDirectoryPath;
             StartTime = startargs.StartTime;
         }
     }
@@ -626,6 +776,68 @@ namespace TemplateBuilder
             IsSuccess = psca.IsSuccess;
             Anomalies = psca.Anomalies;
         }
+    }
+
+
+
+
+    public class Condition
+    {
+        public string Target { get; set; }
+        public ConditionOperator Operator { get; set; }
+        public string Value { get; set; }
+    }
+    public class Variable
+    {
+        public string Code { get; set; }
+        public string Label { get; set; }
+        public string DefaultValue { get; set; }
+        public string Variation { get; set; }
+        public string Group { get; set; }
+        public string SettingsPage { get; set; }
+        public VariableKind Kind { get; set; }
+        public Condition Condition { get; set; }
+        public Variable(string c, string l, VariableKind vk)
+        {
+            Code = c;
+            Label = l;
+            Kind = vk;
+        }
+        public Variable(string c, string l, VariableKind vk, string dv) : this(c, l, vk)
+        {
+            DefaultValue = dv;
+        }
+        public string GetFormatedCode()
+        {
+            StringBuilder sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(Variation))
+                sb.Append(Variation + ".");
+            if (!string.IsNullOrEmpty(Group))
+                sb.Append(Group + ".");
+            if (!string.IsNullOrEmpty(Code))
+                sb.Append(Code);
+
+            return sb.ToString();
+        }
+    }
+    public enum ConditionOperator
+    {
+        Equal, NotEqual
+    }
+    public enum VariableKind
+    {
+        ImageUrl,
+        HtmlLine,
+        HtmlBlock,
+        SearchUrl,
+        Number,
+        Color,
+        Font,
+        Date,
+        Spring,
+        OperationGuid,
+        OperationKind,
+        InteractiveCatalogGuid
     }
 
 

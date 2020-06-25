@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using TemplateBuilder;
 
 namespace program
@@ -10,8 +11,29 @@ namespace program
     {
         static void Main(string[] args)
         {
-            var xsdPath = "http://schemas.simplement-e.com/sys/template.xsd";
-            TemplateUtility util = new TemplateUtility(xsdPath, Directory.GetCurrentDirectory());
+            var url = "http://schemas.altazion.com/sys/template.xsd";
+            var savePath = Path.Combine(Directory.GetCurrentDirectory(), @"schema.xsd");
+
+            if (File.Exists(savePath))
+                File.Delete(savePath);
+
+            using (HttpClient client = new HttpClient())
+            {
+                var response = client.GetAsync(url).Result;
+
+                if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    var content = response.Content.ReadAsStringAsync().Result;
+
+                    System.IO.File.WriteAllText(savePath, content);
+                }
+                else
+                    throw new Exception("Url du schema invalide");
+
+            }
+
+            TemplateUtility util = new TemplateUtility(savePath, Directory.GetCurrentDirectory());
+            //TemplateUtility util = new TemplateUtility(savePath, @"d:/ttt/interactive-template-dummy");
 
             util.ProcessStepStart += Validation_stepStarted;
             util.ProcessStepCompletion += Validation_stepCompleted;
@@ -23,7 +45,7 @@ namespace program
             if (result.IsSuccess)
                 util.StartZipProcess("final.zip");
             else
-                throw new Exception();
+                throw new Exception("Echec du traitement de votre template");
 
 
         }
@@ -34,6 +56,12 @@ namespace program
         }
         public static void Validation_ProcessCompleted(object sender, ProcessCompletionArgs e)
         {
+            var def = Console.ForegroundColor;
+            if (e.IsSuccess)
+                Console.ForegroundColor = ConsoleColor.Green;
+            else
+                Console.ForegroundColor = ConsoleColor.Red;
+
             Console.WriteLine("{0} de l'{1} le {2} à {3} | Durée totale : {4} secondes", e.IsSuccess ? "Succès" : "Echec", e.Libelle, e.CompletionTime.ToString("MM/dd/yyyy"), e.CompletionTime.ToString("HH:mm"), (e.CompletionTime - e.StartTime).TotalSeconds);
             if (!e.IsSuccess)
             {
@@ -41,6 +69,8 @@ namespace program
             }
             Console.WriteLine("- - - - - -   - - - - - - - - ");
             Console.WriteLine("");
+
+            Console.ForegroundColor = def;
         }
 
 
