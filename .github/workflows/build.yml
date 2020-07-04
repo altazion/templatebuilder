@@ -3,8 +3,6 @@ name: .NET Core
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
 
 jobs:
   build:
@@ -18,8 +16,8 @@ jobs:
       with:
         dotnet-version: 3.1.101
     - name: Install dependencies
-      run: dotnet restore src\TemplateBuilder.sln
+      run: dotnet restore /home/runner/work/templatebuilder/templatebuilder/src/TemplateBuilder.sln
     - name: Build
-      run: dotnet build --configuration Release --no-restore src\TemplateBuilder.sln
+      run: dotnet build --configuration Release --no-restore /home/runner/work/templatebuilder/templatebuilder/src/TemplateBuilder.sln
 #    - name: Test
 #      run: dotnet test --no-restore --verbosity normal src\TemplateBuilder.sln
