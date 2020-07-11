@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TemplateBuilderProgram": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\git-dev\\interactive-template-tinyshop"
+    }
+  }
+}

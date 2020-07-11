@@ -9,14 +9,33 @@ namespace program
 {
     class Program
     {
+
         static void Main(string[] args)
         {
             var url = "http://schemas.altazion.com/sys/template.xsd";
-            var savePath = Path.Combine(Directory.GetCurrentDirectory(), @"schema.xsd");
+            string savePath = DownloadSchema(url);
 
+            TemplateUtility util = new TemplateUtility(savePath, Directory.GetCurrentDirectory());
+
+            util.ProcessStepStart += Validation_stepStarted;
+            util.ProcessStepCompletion += Validation_stepCompleted;
+            util.ProcessStart += Validation_ProcessStarted;
+            util.ProcessCompletion += Validation_ProcessCompleted;
+            var result = util.StartTemplateValidationProcess();
+
+            if (result.IsSuccess)
+                util.StartZipProcess("final.zip");
+            else
+                throw new Exception("Echec du traitement de votre template");
+
+
+        }
+
+        private static string DownloadSchema(string url)
+        {
+            var savePath = Path.Combine(Directory.GetCurrentDirectory(), Path.GetFileName(url));
             if (File.Exists(savePath))
                 File.Delete(savePath);
-
             using (HttpClient client = new HttpClient())
             {
                 var response = client.GetAsync(url).Result;
@@ -32,22 +51,7 @@ namespace program
 
             }
 
-            TemplateUtility util = new TemplateUtility(savePath, Directory.GetCurrentDirectory());
-            //TemplateUtility util = new TemplateUtility(savePath, @"d:/ttt/interactive-template-dummy");
-
-            util.ProcessStepStart += Validation_stepStarted;
-            util.ProcessStepCompletion += Validation_stepCompleted;
-            //util.ProcessStepAnomaly += Validation_stepAnomaly; 
-            util.ProcessStart += Validation_ProcessStarted;
-            util.ProcessCompletion += Validation_ProcessCompleted;
-            var result = util.StartTemplateValidationProcess();
-
-            if (result.IsSuccess)
-                util.StartZipProcess("final.zip");
-            else
-                throw new Exception("Echec du traitement de votre template");
-
-
+            return savePath;
         }
 
         public static void Validation_ProcessStarted(object sender, ProcessStartArgs e)
