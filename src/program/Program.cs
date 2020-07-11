@@ -3,19 +3,115 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Xml;
 using TemplateBuilder;
 
 namespace program
 {
     class Program
     {
+        public const string TemplateXsd = "https://schemas.altazion.com/sys/template.xsd";
+        public const string SlideXsd = "https://schemas.altazion.com/store/slide.xsd";
 
+        public enum BuildKind
+        {
+            Template,
+            Slide
+        }
+
+        public class BuildFolder
+        {
+            public string Folder { get; set; }
+            public BuildKind Kind { get; set; }
+
+        }
         static void Main(string[] args)
         {
-            var url = "http://schemas.altazion.com/sys/template.xsd";
+            var folders = GetFolders();
+
+            if (folders.Count == 0)
+                throw new Exception("Il n'y a aucun élément à compiler");
+
+            var t = (from z in folders where z.Kind == BuildKind.Template select z).FirstOrDefault();
+            // pour rester identique : si il y a un template
+            // on verifie qu'il n'y a rien d'autre
+            if(t!=null && folders.Count==1)
+                BuildTemplate(t.Folder);
+            else
+            {
+                foreach(var slide in folders)
+                {
+                    if (slide.Kind == BuildKind.Slide)
+                        BuildSlide(slide.Folder);
+                }
+            }
+        }
+
+        private static void BuildSlide(string folder)
+        {
+            
+        }
+
+        private static List<BuildFolder> GetFolders()
+        {
+            List<BuildFolder> ret = new List<BuildFolder>();
+
+            ParseFolder(Directory.GetCurrentDirectory(), Directory.GetCurrentDirectory(), ret);
+
+
+            return ret;
+        }
+
+        private static void ParseFolder(string rootPath, string path, List<BuildFolder> retArray)
+        {
+            BuildFolder fld = null;
+            foreach (var file in Directory.GetFiles(path,"*.xml"))
+            {
+                XmlDocument doc = new XmlDocument();
+                doc.Load(file);
+                if(doc.DocumentElement.NamespaceURI.Equals(SlideXsd, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    if (fld != null)
+                        throw new ApplicationException("Il y a plusieurs fichiers .xml de compilation dans le dossier : " + path.Substring(rootPath.Length));
+                    else
+                    {
+                        fld = new BuildFolder()
+                        {
+                            Folder = path,
+                            Kind = BuildKind.Slide
+                        };
+                    }
+                }
+                else if (doc.DocumentElement.NamespaceURI.Equals(TemplateXsd, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    if (fld != null)
+                        throw new ApplicationException("Il y a plusieurs fichiers .xml de compilation dans le dossier : " + path.Substring(rootPath.Length));
+                    else
+                    {
+                        fld = new BuildFolder()
+                        {
+                            Folder = path,
+                            Kind = BuildKind.Template
+                        };
+                    }
+                }
+            }
+            if(fld!=null)
+                retArray.Add(fld);
+
+            foreach(var subfol in Directory.GetDirectories(path))
+            {
+                ParseFolder(rootPath, subfol, retArray);
+            }
+
+        }
+
+        private static void BuildTemplate(string buildPath)
+        {
+            var url = TemplateXsd ;
             string savePath = DownloadSchema(url);
 
-            TemplateUtility util = new TemplateUtility(savePath, Directory.GetCurrentDirectory());
+            TemplateUtility util = new TemplateUtility(savePath, buildPath);
 
             util.ProcessStepStart += Validation_stepStarted;
             util.ProcessStepCompletion += Validation_stepCompleted;
@@ -27,8 +123,6 @@ namespace program
                 util.StartZipProcess("final.zip");
             else
                 throw new Exception("Echec du traitement de votre template");
-
-
         }
 
         private static string DownloadSchema(string url)
