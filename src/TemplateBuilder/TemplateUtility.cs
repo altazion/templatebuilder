@@ -337,7 +337,8 @@ namespace TemplateBuilder
 
             var rootPath = _processStartArgs.TemplateDirectoryPath;
             string[] fileEntries;
-            List<string> unusedFiles = Directory.GetFiles(rootPath, "*.*", SearchOption.AllDirectories).Where(x => x.Contains(temp_dir)).Select(x => x.ToLowerInvariant()).ToList();
+            //List<string> unusedFiles = Directory.GetFiles(rootPath, "*.*", SearchOption.AllDirectories).Where(x => x.Contains(temp_dir)).Select(x => x.ToLowerInvariant()).ToList();
+            List<string> unusedFiles = Directory.GetFiles(rootPath, "*.*", SearchOption.AllDirectories).Select(x => x.ToLowerInvariant()).ToList();
             unusedFiles.Remove(_processCompletionArgs.XmlDocumentInformation.FileCompletePath.ToLowerInvariant()); // On remove le .xml racine.
             XmlDocument doc = _processCompletionArgs.XmlDocumentInformation.Document;
 
