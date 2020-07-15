@@ -136,6 +136,7 @@ namespace TemplateBuilder
             foreach (FileInfo fi in source.GetFiles())
             {
                 if (_unusedFiles != null && _unusedFiles.Contains(fi.FullName.ToLower())) continue;
+                if (fi.FullName.Contains(".git")) continue;
                 Console.WriteLine(@"Copie de {0}\{1}", target.FullName, fi.Name);
                 fi.CopyTo(Path.Combine(target.FullName, fi.Name), true);
             }
@@ -148,6 +149,7 @@ namespace TemplateBuilder
                 foreach (FileInfo fi in diSourceSubDir.GetFiles())
                 {
                     if (_unusedFiles != null && _unusedFiles.Contains(fi.FullName.ToLower())) continue;
+                    if (fi.FullName.Contains(".git")) continue;
                     hasUsedFiles = true;
                 }
                 if (hasUsedFiles)
@@ -446,6 +448,129 @@ namespace TemplateBuilder
             }
 
 
+
+
+            CheckPublishSettings(doc, rootPath, variationsCodes, unusedFiles, completeArgs);
+            CheckSharedFiles(doc, rootPath, unusedFiles, completeArgs);
+
+            for (int i = 0; i < unusedFiles.Count; i++)
+            {
+                AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierInutile, unusedFiles[i]), false);
+            }
+
+
+            _unusedFiles = unusedFiles.ToArray();
+            completeArgs.CompletionTime = DateTime.Now;
+            OnProcessStepCompletion(completeArgs);
+            return completeArgs.IsSuccess;
+
+        }
+
+
+
+        private string GetFormatedName(string name)
+        {
+            return name; // github
+            return name.Replace(@"/", @"\"); // local
+        }
+        private void CheckPublishSettings(XmlDocument doc, string rootPath, List<string> variationsCodes, List<string> unusedFiles, ProcessStepCompletionArgs completeArgs)
+        {
+            var publishSettings = doc.DocumentElement.GetElementsByTagName("PublishSettings");
+
+            if (publishSettings.Count == 1)
+            {
+                // Les settings 
+                var settings = doc.DocumentElement.SelectNodes("//*[local-name()='Setting']");
+                if (settings.Count > 0)
+                {
+                    foreach (XmlNode t in settings)
+                    {
+                        bool matchingVariableFound = false;
+                        var code = t.Attributes.GetNamedItem("code").Value;
+
+                        for (int i = 0; i < _processCompletionArgs.XmlDocumentInformation.Variables.Count; i++)
+                        {
+                            var variable = _processCompletionArgs.XmlDocumentInformation.Variables[i];
+
+                            if (code.Equals(variable.GetFormatedCode()))
+                            {
+                                var value = t.Attributes.GetNamedItem("value").Value;
+                                bool isValueValid = true;
+                                if (variable.Kind == VariableKind.Number)
+                                {
+                                    if (!int.TryParse(value, out int intR) && !float.TryParse(value, out float floatR))
+                                    {
+                                        isValueValid = false;
+                                    }
+
+                                }
+                                else if (variable.Kind == VariableKind.InteractiveCatalogGuid)
+                                {
+                                    if (!Guid.TryParse(value, out Guid guidrR))
+                                    {
+                                        isValueValid = false;
+                                    }
+                                }
+                                else if (variable.Kind == VariableKind.Date)
+                                {
+                                    if (!DateTime.TryParse(value, out DateTime datetimeR))
+                                    {
+                                        isValueValid = false;
+                                    }
+                                }
+
+                                if (!isValueValid)
+                                {
+                                    AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_SettingTypeInvalide, value, variable.Kind), true);
+                                }
+
+                                matchingVariableFound = true;
+
+
+                            }
+                        }
+                        if (!matchingVariableFound)
+                        {
+                            AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_SettingNoMatchWithVariable, code), true);
+                        }
+                    }
+                }
+                // variations
+                var publishvariations = doc.DocumentElement.GetElementsByTagName("Variations");
+                if (publishvariations.Count == 1)
+                {
+                    bool found = false;
+                    var publishvariation = publishvariations[0];
+                    foreach (XmlNode child in publishvariation.ChildNodes)
+                    {
+                        if (!child.Name.Equals("Variation")) continue;
+                        var code = child.Attributes.GetNamedItem("code").Value;
+
+                        for (int i = 0; i < variationsCodes.Count; i++)
+                        {
+                            var variation = variationsCodes[i];
+
+                            if (code.Equals(variation, StringComparison.InvariantCultureIgnoreCase))
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!found)
+                        AddAnomaly(completeArgs, TemplateValidatorResources.ContentValidation_DefaultVariationInvalide, true);
+                }
+                else
+                {
+                    AddAnomaly(completeArgs, TemplateValidatorResources.ContentValidation_DefaultVariationInvalide, true);
+
+                }
+            }
+        }
+
+        private void CheckSharedFiles(XmlDocument doc, string rootPath, List<string> unusedFiles, ProcessStepCompletionArgs completeArgs)
+        {
+            string[] fileEntries;
             var shareds = doc.DocumentElement.GetElementsByTagName("Shared");
             if (shareds.Count > 0)
             {
@@ -547,121 +672,6 @@ namespace TemplateBuilder
                     }
                 }
             }
-
-            var publishSettings = doc.DocumentElement.GetElementsByTagName("PublishSettings");
-
-            if (publishSettings.Count == 1)
-            {
-                // Les settings 
-                var settings = doc.DocumentElement.SelectNodes("//*[local-name()='Setting']");
-                if (settings.Count > 0)
-                {
-                    foreach (XmlNode t in settings)
-                    {
-                        bool matchingVariableFound = false;
-                        var code = t.Attributes.GetNamedItem("code").Value;
-
-                        for (int i = 0; i < _processCompletionArgs.XmlDocumentInformation.Variables.Count; i++)
-                        {
-                            var variable = _processCompletionArgs.XmlDocumentInformation.Variables[i];
-
-                            if (code.Equals(variable.GetFormatedCode()))
-                            {
-                                var value = t.Attributes.GetNamedItem("value").Value;
-                                bool isValueValid = true;
-                                if (variable.Kind == VariableKind.Number)
-                                {
-                                    if (!int.TryParse(value, out int intR) && !float.TryParse(value, out float floatR))
-                                    {
-                                        isValueValid = false;
-                                    }
-
-                                }
-                                else if (variable.Kind == VariableKind.InteractiveCatalogGuid)
-                                {
-                                    if (!Guid.TryParse(value, out Guid guidrR))
-                                    {
-                                        isValueValid = false;
-                                    }
-                                }
-                                else if (variable.Kind == VariableKind.Date)
-                                {
-                                    if (!DateTime.TryParse(value, out DateTime datetimeR))
-                                    {
-                                        isValueValid = false;
-                                    }
-                                }
-
-                                if (!isValueValid)
-                                {
-                                    AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_SettingTypeInvalide, value, variable.Kind), true);
-                                }
-
-                                matchingVariableFound = true;
-
-
-                            }
-                        }
-                        if (!matchingVariableFound)
-                        {
-                            AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_SettingNoMatchWithVariable, code), true);
-                        }
-                    }
-                }
-                // variations
-                var publishvariations = doc.DocumentElement.GetElementsByTagName("Variations");
-                if (publishvariations.Count == 1)
-                {
-                    bool found = false;
-                    var publishvariation = publishvariations[0];
-                    foreach (XmlNode child in publishvariation.ChildNodes)
-                    {
-                        if (!child.Name.Equals("Variation")) continue;
-                        var code = child.Attributes.GetNamedItem("code").Value;
-
-                        for (int i = 0; i < variationsCodes.Count; i++)
-                        {
-                            var variation = variationsCodes[i];
-
-                            if (code.Equals(variation, StringComparison.InvariantCultureIgnoreCase))
-                            {
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (!found)
-                        AddAnomaly(completeArgs, TemplateValidatorResources.ContentValidation_DefaultVariationInvalide, true);
-                }
-                else
-                {
-                    AddAnomaly(completeArgs, TemplateValidatorResources.ContentValidation_DefaultVariationInvalide, true);
-
-                }
-            }
-
-
-
-
-            for (int i = 0; i < unusedFiles.Count; i++)
-            {
-                AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierInutile, unusedFiles[i]), false);
-            }
-
-
-            _unusedFiles = unusedFiles.ToArray();
-            completeArgs.CompletionTime = DateTime.Now;
-            OnProcessStepCompletion(completeArgs);
-            return completeArgs.IsSuccess;
-
-        }
-
-
-
-        private string GetFormatedName(string name)
-        {
-            return name.Replace(@"/", @"\"); // local
-            return name; // github
         }
 
         private void AddAnomaly(ProcessStepCompletionArgs datas, string message, bool isError)
