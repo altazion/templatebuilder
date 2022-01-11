@@ -31,6 +31,9 @@ jobs:
 #      with:
 #          push: true
 #          tags: altazion/template-builder:latest
-    - name: BuildImage
-      run: docker build /home/runner/work/templatebuilder/templatebuilder/release/ --file /home/runner/work/templatebuilder/templatebuilder/release/Dockerfile --tag altazion/template-builder
-      
+    - name: Build Image
+      run: docker build /home/runner/work/templatebuilder/templatebuilder/release/ --file /home/runner/work/templatebuilder/templatebuilder/release/Dockerfile --tag altazion/template-builder:latest
+    - name: Login to Docker Hub
+      run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+    - name: Push to Docker Hub
+      run: docker push altazion/template-builder:latest
