@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Schema;
 using TemplateBuilder.Properties;
@@ -13,6 +14,8 @@ namespace TemplateBuilder
 
     public class TemplateUtility
     {
+
+
 
         #region Events
         public event EventHandler<ProcessStartArgs> ProcessStart;
@@ -61,6 +64,9 @@ namespace TemplateBuilder
         {
             _processStartArgs.StartTime = DateTime.Now;
             OnProcessStart(_processStartArgs);
+
+
+
             _processCompletionArgs = new ProcessCompletionArgs(_processStartArgs);
             _processCompletionArgs.XmlDocumentInformation = GetXMLContent();
 
@@ -189,6 +195,11 @@ namespace TemplateBuilder
                 completeArgs.CompletionTime = DateTime.Now;
                 OnProcessStepCompletion(completeArgs);
                 return xdi;
+            }
+
+            foreach(var r in rootFiles)
+            {
+                ReplaceEnvVar(r);
             }
 
             XmlDocument doc = new XmlDocument();
@@ -603,14 +614,17 @@ namespace TemplateBuilder
                             switch (Path.GetExtension(fileName))
                             {
                                 case ".html":
+                                    ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
                                     if (sharedKind.Equals("html"))
                                         kindFound = true;
                                     break;
                                 case ".css":
+                                    ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
                                     if (sharedKind.Equals("css"))
                                         kindFound = true;
                                     break;
                                 case ".js":
+                                    ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
                                     if (sharedKind.Equals("js"))
                                         kindFound = true;
                                     break;
@@ -643,6 +657,7 @@ namespace TemplateBuilder
                                 switch (Path.GetExtension(fileName).ToLower())
                                 {
                                     case ".html":
+                                        ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
                                         if (sharedKind.Equals("html"))
                                         {
                                             fileFound = true;
@@ -650,6 +665,7 @@ namespace TemplateBuilder
                                         }
                                         break;
                                     case ".css":
+                                        ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
                                         if (sharedKind.Equals("css"))
                                         {
                                             fileFound = true;
@@ -657,6 +673,7 @@ namespace TemplateBuilder
                                         }
                                         break;
                                     case ".js":
+                                        ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
                                         if (sharedKind.Equals("js"))
                                         {
                                             fileFound = true;
@@ -686,6 +703,73 @@ namespace TemplateBuilder
                 datas.IsSuccess = false;
 
             OnProcessStepAnomaly(datas.Anomalies.Last());
+        }
+
+        private static Regex _relativePath1 = new Regex(@"(\/app\/vending\/)?themes\/[0-9|a-f|A-F|-]*\/(?<capture>.*)", RegexOptions.IgnoreCase);
+
+        private static void ReplaceRelativePath(string fileToChange)
+        {
+            var str = File.ReadAllText(fileToChange);
+            var str2 = _relativePath1.Replace(str, @"~/${capture}");
+            if (!str.Equals(str2))
+                File.WriteAllText(fileToChange, str2);
+        }
+
+        private static Regex _envVarInXml = new Regex(@"\{\{(?<envName>.*)\}\}", RegexOptions.IgnoreCase);
+
+        private static void ReplaceEnvVar(string fileToChange)
+        {
+            var str = File.ReadAllText(fileToChange);
+
+            bool hasChanged = false;
+            var matches = _envVarInXml.Matches(str);
+            if (matches != null)
+            {
+                for(int i=matches.Count -1; i>=0; i--)
+                {
+                    string toReplace = matches[i].Value;
+                    string env = toReplace.Substring(2, toReplace.Length - 4);
+                    env = GetEnvValue(env);
+
+                    str = str.Replace(toReplace, env);
+                    hasChanged = true;
+                }
+            }
+
+            if(hasChanged)
+                File.WriteAllText(fileToChange, str);
+        }
+
+        private static string GetEnvValue(string env)
+        {
+            if (env == null)
+                env = "";
+            string evt;
+            switch(env.ToLowerInvariant())
+            {
+                case "git_repo_name":
+                    evt = Environment.GetEnvironmentVariable("GITHUB_REPOSITORY");
+                    if(!string.IsNullOrEmpty(evt) && evt.IndexOf("/")>=0)
+                        return evt.Substring(evt.IndexOf("/") + 1);
+                    return "";
+                case "git_repo_owner":
+                    evt = Environment.GetEnvironmentVariable("GITHUB_REPOSITORY");
+                    if (!string.IsNullOrEmpty(evt) && evt.IndexOf("/") >= 0)
+                        return evt.Substring(0, evt.IndexOf("/"));
+                    return "";
+                default:
+                    evt = Environment.GetEnvironmentVariable(env);
+                    if (evt == null)
+                    {
+                        evt = Environment.GetEnvironmentVariable(env.ToUpperInvariant());
+                        if (evt == null)
+                            evt = Environment.GetEnvironmentVariable(env.ToLowerInvariant());
+                    }
+
+                    return evt==null?"":evt;
+            }
+
+            return "";
         }
     }
 

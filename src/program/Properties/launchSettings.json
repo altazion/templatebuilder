@@ -2,7 +2,10 @@
   "profiles": {
     "TemplateBuilderProgram": {
       "commandName": "Project",
-      "workingDirectory": "C:\\git-dev\\interactive-template-tinyshop"
+      "workingDirectory": "C:\\git-dev\\interactive-signage-empty",
+      "environmentVariables": {
+        "GITHUB_REPOSITORY": "pouet/pouet-le-template"
+      }
     }
   }
 }

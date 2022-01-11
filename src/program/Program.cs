@@ -17,10 +17,13 @@ namespace program
 
             TemplateUtility util = new TemplateUtility(savePath, Directory.GetCurrentDirectory());
 
+            // on enregistre des handlers pour afficher la progreesion
+            // dans la console de l'action
             util.ProcessStepStart += Validation_stepStarted;
             util.ProcessStepCompletion += Validation_stepCompleted;
             util.ProcessStart += Validation_ProcessStarted;
             util.ProcessCompletion += Validation_ProcessCompleted;
+
             var result = util.StartTemplateValidationProcess();
 
             if (result.IsSuccess)
