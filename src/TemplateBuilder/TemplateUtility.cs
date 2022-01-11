@@ -219,6 +219,8 @@ namespace TemplateBuilder
                             }
                             catch (Exception e)
                             {
+                                AddAnomaly(completeArgs, e.Message, true);
+                                throw;
                             }
                         }
                         break;
