@@ -614,17 +614,17 @@ namespace TemplateBuilder
                             switch (Path.GetExtension(fileName))
                             {
                                 case ".html":
-                                    ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
+                                    ReplaceRelativePath(fileEntries[i]);
                                     if (sharedKind.Equals("html"))
                                         kindFound = true;
                                     break;
                                 case ".css":
-                                    ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
+                                    ReplaceRelativePath(fileEntries[i]);
                                     if (sharedKind.Equals("css"))
                                         kindFound = true;
                                     break;
                                 case ".js":
-                                    ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
+                                    ReplaceRelativePath(fileEntries[i]);
                                     if (sharedKind.Equals("js"))
                                         kindFound = true;
                                     break;
@@ -657,7 +657,7 @@ namespace TemplateBuilder
                                 switch (Path.GetExtension(fileName).ToLower())
                                 {
                                     case ".html":
-                                        ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
+                                        ReplaceRelativePath(fileEntries[i]);
                                         if (sharedKind.Equals("html"))
                                         {
                                             fileFound = true;
@@ -665,7 +665,7 @@ namespace TemplateBuilder
                                         }
                                         break;
                                     case ".css":
-                                        ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
+                                        ReplaceRelativePath(fileEntries[i]);
                                         if (sharedKind.Equals("css"))
                                         {
                                             fileFound = true;
@@ -673,7 +673,7 @@ namespace TemplateBuilder
                                         }
                                         break;
                                     case ".js":
-                                        ReplaceRelativePath(fileEntries[i].ToLowerInvariant());
+                                        ReplaceRelativePath(fileEntries[i]);
                                         if (sharedKind.Equals("js"))
                                         {
                                             fileFound = true;
