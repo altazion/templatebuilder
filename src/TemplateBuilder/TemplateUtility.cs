@@ -396,7 +396,25 @@ namespace TemplateBuilder
                             for (int i = 0; i < fileEntries.Length; i++)
                             {
                                 var fileName = GetFormatedName(fileEntries[i].ToLowerInvariant());
-                                if (!fileName.Contains(t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())) continue;
+
+                                bool shouldNotUse = false;
+                                switch(t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())
+                                {
+                                    case "resources":
+                                    case "ressources":
+                                        break;
+                                    default:
+                                        if (!fileName.Contains(t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())) 
+                                            shouldNotUse = true;
+
+                                        break;
+                                }
+
+                                if (shouldNotUse)
+                                    continue;
+
+                                ReplaceRelativePath(fileEntries[i]);
+
                                 unusedFiles.Remove(fileName);
                                 switch (Path.GetExtension(fileName).ToLower())
                                 {
@@ -408,8 +426,8 @@ namespace TemplateBuilder
                                     case ".js":
                                         break;
                                 }
-
                             }
+
                             if (!htmlFound)
                             {
                                 AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierHtmlNonExistant, variationContentKind), true);
@@ -436,6 +454,17 @@ namespace TemplateBuilder
                                 for (int z = 0; z < fileEntries.Length; z++)
                                 {
                                     var fileName = GetFormatedName(fileEntries[z].ToLowerInvariant());
+
+                                    ReplaceRelativePath(fileEntries[z]);
+
+                                    switch (t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())
+                                    {
+                                        case "resources":
+                                        case "ressources":
+                                            fileFound = true;
+                                            break;
+                                    }
+
                                     unusedFiles.Remove(fileName);
                                     switch (Path.GetExtension(fileName).ToLower())
                                     {
@@ -610,7 +639,24 @@ namespace TemplateBuilder
                         {
                             bool kindFound = false;
                             var fileName = GetFormatedName(fileEntries[i].ToLowerInvariant());
-                            if (!fileName.Contains(t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())) continue;
+                            
+                            bool shouldNotUse = false;
+                            switch (t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())
+                            {
+                                case "resources":
+                                case "ressources":
+                                    kindFound = true;
+                                    break;
+                                default:
+                                    if (!fileName.Contains(t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant()))
+                                        shouldNotUse = true;
+
+                                    break;
+                            }
+
+                            if (shouldNotUse)
+                                continue;
+
                             switch (Path.GetExtension(fileName))
                             {
                                 case ".html":
@@ -654,35 +700,38 @@ namespace TemplateBuilder
                             for (int z = 0; z < fileEntries.Length; z++)
                             {
                                 var fileName = GetFormatedName(fileEntries[z].ToLowerInvariant());
+
+                                switch (t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())
+                                {
+                                    case "resources":
+                                    case "ressources":
+                                        fileFound = true;
+                                        break;
+                                }
+
                                 switch (Path.GetExtension(fileName).ToLower())
                                 {
                                     case ".html":
                                         ReplaceRelativePath(fileEntries[i]);
                                         if (sharedKind.Equals("html"))
-                                        {
                                             fileFound = true;
-                                            unusedFiles.Remove(fileName);
-                                        }
                                         break;
                                     case ".css":
                                         ReplaceRelativePath(fileEntries[i]);
                                         if (sharedKind.Equals("css"))
-                                        {
                                             fileFound = true;
-                                            unusedFiles.Remove(fileName);
-                                        }
                                         break;
                                     case ".js":
                                         ReplaceRelativePath(fileEntries[i]);
                                         if (sharedKind.Equals("js"))
-                                        {
                                             fileFound = true;
-                                            unusedFiles.Remove(fileName);
-                                        }
                                         break;
                                 }
                                 if (fileFound)
+                                {
+                                    unusedFiles.Remove(fileName);
                                     break;
+                                }
                             }
                             if (!fileFound)
                                 AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierNonExistant, fileNodes[i].Attributes.GetNamedItem("path").Value, sharedKind), true);
