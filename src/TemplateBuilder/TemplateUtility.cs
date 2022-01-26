@@ -152,13 +152,23 @@ namespace TemplateBuilder
                 if (diSourceSubDir.FullName.Equals(target.FullName))
                     continue;
                 bool hasUsedFiles = false;
-                foreach (FileInfo fi in diSourceSubDir.GetFiles())
+                var files = diSourceSubDir.GetFiles();
+
+                if (files.Length > 0)
                 {
-                    if (_unusedFiles != null && _unusedFiles.Contains(fi.FullName.ToLower())) continue;
-                    if (fi.FullName.Contains(".git")) continue;
-                    hasUsedFiles = true;
+                    foreach (FileInfo fi in files)
+                    {
+                        if (_unusedFiles != null && _unusedFiles.Contains(fi.FullName.ToLower())) continue;
+                        if (fi.FullName.Contains(".git")) continue;
+                        hasUsedFiles = true;
+                    }
+                    if (hasUsedFiles)
+                    {
+                        DirectoryInfo nextTargetSubDir = target.CreateSubdirectory(diSourceSubDir.Name);
+                        CopyUsedFilesForZip(diSourceSubDir, nextTargetSubDir);
+                    }
                 }
-                if (hasUsedFiles)
+                else // si aucun fichier, on va voir si on doit copier les sous dossiers
                 {
                     DirectoryInfo nextTargetSubDir = target.CreateSubdirectory(diSourceSubDir.Name);
                     CopyUsedFilesForZip(diSourceSubDir, nextTargetSubDir);
@@ -513,8 +523,7 @@ namespace TemplateBuilder
 
         private string GetFormatedName(string name)
         {
-            return name; // github
-            return name.Replace(@"/", @"\"); // local
+            return name.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar); // github
         }
         private void CheckPublishSettings(XmlDocument doc, string rootPath, List<string> variationsCodes, List<string> unusedFiles, ProcessStepCompletionArgs completeArgs)
         {
