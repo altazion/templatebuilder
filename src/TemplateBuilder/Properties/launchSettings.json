@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "TemplateBuilder": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\git-dev\\essai-kj-01"
+    }
+  }
+}

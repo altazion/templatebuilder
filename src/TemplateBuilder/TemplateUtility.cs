@@ -714,17 +714,17 @@ namespace TemplateBuilder
                                 switch (Path.GetExtension(fileName).ToLower())
                                 {
                                     case ".html":
-                                        ReplaceRelativePath(fileEntries[i]);
+                                        ReplaceRelativePath(fileEntries[z]);
                                         if (sharedKind.Equals("html"))
                                             fileFound = true;
                                         break;
                                     case ".css":
-                                        ReplaceRelativePath(fileEntries[i]);
+                                        ReplaceRelativePath(fileEntries[z]);
                                         if (sharedKind.Equals("css"))
                                             fileFound = true;
                                         break;
                                     case ".js":
-                                        ReplaceRelativePath(fileEntries[i]);
+                                        ReplaceRelativePath(fileEntries[z]);
                                         if (sharedKind.Equals("js"))
                                             fileFound = true;
                                         break;
