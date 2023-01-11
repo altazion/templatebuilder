@@ -1,0 +1,31 @@
+{
+ "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+ "id": "636172b9-fc43-4177-8326-4bda3e60224b",
+ "name": "BuildAltazionSignageTemplate",
+ "friendlyName": "Build an Altazion Signage Template Package",
+ "description": "Create a Zip file containing all the data for deploying a template to Altazion Signage",
+ "helpMarkDown": "",
+ "category": "Utility",
+ "author": "Altazion",
+ "version": {
+     "Major": 0,
+     "Minor": 1,
+     "Patch": 0
+ },
+ "instanceNameFormat": "Build $(templatename)",
+ "inputs": [
+     {
+         "name": "templatename",
+         "type": "string",
+         "label": "Template Name",
+         "defaultValue": "My Template",
+         "required": true,
+         "helpMarkDown": "Template Name (will replace in .xml file)"
+     }
+ ],
+ "execution": {
+     "Node": {
+         "target": "index.js"
+     }
+ }
+ }

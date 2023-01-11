@@ -1,0 +1,36 @@
+{
+    "manifestVersion": 1,
+    "id": "template-build-task",
+    "name": "Altazion Signage Build Tasks",
+    "version": "0.0.1",
+    "publisher": "Altazion",
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ],    
+    "description": "Tools for building a Altazion Signage Template.",
+    "categories": [
+        "Azure Pipelines"
+    ],
+    "icons": {
+        "default": "images/128.png"        
+    },
+    "files": [
+        {
+            "path": "buildandreleasetask"
+        }
+    ],
+    "contributions": [
+        {
+            "id": "BuildAltazionSignageTemplate",
+            "type": "ms.vss-distributed-task.task",
+            "targets": [
+                "ms.vss-distributed-task.tasks"
+            ],
+            "properties": {
+                "name": "buildandreleasetask"
+            }
+        }
+    ]
+}
