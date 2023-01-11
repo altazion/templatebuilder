@@ -14,7 +14,11 @@ namespace program
         {
             var url = "http://schemas.altazion.com/sys/template.xsd";
             string savePath = DownloadSchema(url);
-
+#if DEBUG
+            string tmpPth = @"C:\git-dev\Schemas\Schemas\dev\SchemasWebSite\sys\template.xsd";
+            if (File.Exists(tmpPth))
+                savePath = tmpPth;
+#endif
             TemplateUtility util = new TemplateUtility(savePath, Directory.GetCurrentDirectory());
 
             // on enregistre des handlers pour afficher la progreesion

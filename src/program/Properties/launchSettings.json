@@ -2,7 +2,7 @@
   "profiles": {
     "TemplateBuilderProgram": {
       "commandName": "Project",
-      "workingDirectory": "C:\\git-dev\\essai-kj-01",
+      "workingDirectory": "C:\\git-dev\\Clients-KingJouet\\KJ-Groupe\\Bornes\\TemplateDemo",
       "environmentVariables": {
         "GITHUB_REPOSITORY": "pouet/pouet-le-template"
       }

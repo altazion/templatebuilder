@@ -387,8 +387,12 @@ namespace TemplateBuilder
 
                     foreach (XmlNode t in n.ChildNodes)
                     {
-                        var variationContentKind = t.Attributes.GetNamedItem("kind").Value;
+                        if (t.NodeType != XmlNodeType.Element)
+                            continue;
+
                         if (!t.Name.Equals("VariationContent")) continue;
+
+                        var variationContentKind = t.Attributes.GetNamedItem("kind").Value;
 
                         if (t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("Folder")).Count() == 1)
                         {
