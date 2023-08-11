@@ -396,7 +396,7 @@ namespace TemplateBuilder
 
                         if (t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("Folder")).Count() == 1)
                         {
-                            bool htmlFound = false;
+                            bool htmlFound = false, isResourceOnly = true;
                             var folderNode = t.ChildNodes.Cast<XmlNode>().Where(p => p.Name.Equals("Folder")).FirstOrDefault();
                             var partPath = folderNode.Attributes.GetNamedItem("path").Value;
                             var currDir = Path.Combine(rootPath, partPath);
@@ -420,6 +420,7 @@ namespace TemplateBuilder
                                     case "ressources":
                                         break;
                                     default:
+                                        isResourceOnly = false;
                                         if (!fileName.Contains(t.Attributes.GetNamedItem("kind").Value.ToLowerInvariant())) 
                                             shouldNotUse = true;
 
@@ -435,6 +436,7 @@ namespace TemplateBuilder
                                 switch (Path.GetExtension(fileName).ToLower())
                                 {
                                     case ".html":
+                                        isResourceOnly = false;
                                         htmlFound = true;
                                         break;
                                     case ".css":
@@ -444,7 +446,7 @@ namespace TemplateBuilder
                                 }
                             }
 
-                            if (!htmlFound)
+                            if (!htmlFound && !isResourceOnly)
                             {
                                 AddAnomaly(completeArgs, string.Format(TemplateValidatorResources.ContentValidation_FichierHtmlNonExistant, variationContentKind), true);
                             }
